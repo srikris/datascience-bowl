@@ -8,10 +8,10 @@ a [GraphLab-Create's deep
 learning](https://dato.com/learn/userguide/#neural-net-classifier) which is
 based on CXXNet. 
 
-**Setup time**: < 2 mins
-**Train time**: < 20 mins on a GPU (it could take much longer on a CPU)
-**Validation score**: 0.78
-**Leaderboard score**: 0.78
+* **Setup time**: ~2 mins
+* **Train time**: ~20 mins on a GPU (it could take much longer on a CPU)
+* **Validation score**: 0.78
+* **Leaderboard score**: 0.78
 
 
 Summary of things done:
