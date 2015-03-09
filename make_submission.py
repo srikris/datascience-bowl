@@ -3,16 +3,31 @@ import PIL
 from PIL import *
 from PIL import Image
 import StringIO
+import math
 
-def multi_class_log_loss(model, sf):
+
+def averaged_prediction(model, sf, num_samples = 10):
+    """
+    Average out predictions based on random crops and random mirror.
+    """
+    prob = model.predict_topk(sf, k=121).sort(['row_id', 'class'])
+    for i in range(num_samples-1):
+        print "Making prediction : %s" % i
+        prob['score'] = prob['score'] + \
+            model.predict_topk(sf, k=121).sort(['row_id', 'class'])['score']
+    prob['score'] = prob['score'] / (num_samples * 1.0)
+    return prob
+
+
+def multi_class_log_loss(model, sf,  num_samples = 10):
     """
     Compute multi-class log loss given a model and an SFrame.
     """
-    prob = model.predict_topk(sf, k=121)
+    prob = averaged_prediction(model, sf, num_samples)
     val = prob.join(
             gl.SFrame({'class': sf['class']}).add_row_number('row_id'), 
             on=['row_id', 'class'])
-    val['log-score'] = val['score'].apply(lambda x: math.log(x))
+    val['log-score'] = val['score'].apply(lambda x: math.log(min(1 - 1e-15, max(1e-15, x))))
     return -val['log-score'].mean()
 
 
@@ -20,11 +35,21 @@ def make_submission(model, test):
     """
     Make a submission in the format as asked by Kaggle.
     """
+    # Setup the data
     preds = gl.SFrame({'image': test['path'].apply(lambda x: x.split('/')[-1])})
-    preds.add_columns(model.predict_topk(test, k=121)\
-        .unstack(['class', o_type], 'dict')\
-        .unpack('dict', '')\
-        .remove_column('row_id'))
+    preds = preds.add_row_number('row_id')
+
+    # Get an averaged prediction
+    prob = averaged_prediction(model, test)
+
+    # Add predictions to the data
+    preds = preds.join(prob.unstack(['class', 'score'], 'dict')\
+                           .unpack('dict', ''))
+    preds = preds.remove_column('row_id')
+
+    # Order according to submission
+    cols = gl.SFrame.read_csv('sampleSubmission.csv').column_names()
+    preds = preds.select_columns(cols)
     preds.save('submission.csv')
 
 
@@ -91,15 +116,13 @@ if __name__ == "__main__":
     train['class'] = train['path'].apply(lambda x: x.split('/')[-2])
 
 
-    # Save (in a compressed format)
-    # train.save('train.gl')
 
     # Perform the data augmentation by making 4 copies of the data.
     print "Data Augmentation..."
     train = train.append(train)
     train = train.append(train)
     train = train.add_row_number()
-    train['image-aug'] = train[['id', 'image']].apply(random_rotate)
+    train['image'] = train[['id', 'image']].apply(random_rotate)
 
 
     # HACK: Create a random split for a validation set to make sure that the 
@@ -112,7 +135,7 @@ if __name__ == "__main__":
     print "Training Model..."
     network = gl.deeplearning.load('network.conf')
     model = gl.neuralnet_classifier.create(train, 'class', 
-                                           features=['image-aug'], 
+                                           features=['image'], 
                                            max_iterations=50, 
                                            network=network, 
                                            validation_set=valid, 
@@ -122,12 +145,13 @@ if __name__ == "__main__":
     # Evaluate the model
     print "Score on the validation set: %s" % multi_class_log_loss(model, valid)
 
-    ## Make a submission
-    #print "Creating submission..."
-    #make_submission(model, test)
-    #test = gl.image_analysis.load_images('test')
-    #test['image'] = gl.image_analysis.resize(test['image'], 64, 64, 3)
+    # Make a submission
+    print "Creating submission..."
+    test = gl.image_analysis.load_images('test')
+    test['image'] = gl.image_analysis.resize(test['image'], 64, 64, 3)
+    make_submission(model, test)
 
 
-
-
+    # Save (in a compressed format) for rapid loading in the future
+    # train.save('train.gl')
+    # test.save('test.gl')
