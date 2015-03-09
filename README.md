@@ -32,7 +32,6 @@ Here is a quick summary of the submission:
 
 Install
 -------
-
 **CPU instructions**
 ```
 pip install -r requirements.pip
