@@ -115,6 +115,10 @@ if __name__ == "__main__":
     train['image'] = gl.image_analysis.resize(train['image'], 64, 64, 3)
     train['class'] = train['path'].apply(lambda x: x.split('/')[-2])
 
+    # HACK: Create a random split for a validation set to make sure that the 
+    # classes are equally balanced in the train and validation set.
+    train, valid = gl.recommender.util.random_split_by_user(train, 
+                   user_id='class', item_id='image', item_test_proportion=0.1)
 
 
     # Perform the data augmentation by making 4 copies of the data.
@@ -123,13 +127,6 @@ if __name__ == "__main__":
     train = train.append(train)
     train = train.add_row_number()
     train['image'] = train[['id', 'image']].apply(random_rotate)
-
-
-    # HACK: Create a random split for a validation set to make sure that the 
-    # classes are equally balanced in the train and validation set.
-    train, valid = gl.recommender.util.random_split_by_user(train, 
-                   user_id='class', item_id='image', item_test_proportion=0.1)
-
 
     # Load the GL network and train a model
     print "Training Model..."
