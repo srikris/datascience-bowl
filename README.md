@@ -13,6 +13,7 @@ based on CXXNet.
 * **Validation score**: 0.98
 * **Leaderboard score**: 0.97
 
+**Update**: I haven't had much time to improve this score but [francoisluus](https://github.com/francoisluus/datascience-bowl) has improved the score to **0.77** using some interesting ideas!
 
 Solution
 --------
