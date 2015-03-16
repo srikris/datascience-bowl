@@ -10,7 +10,7 @@ based on CXXNet.
 
 * **Setup time**: ~2 mins
 * **Train time**: ~20 mins on a GPU (it could take much longer on a CPU)
-* **Validation score**: 0.76
+* **Validation score**: 0.98
 * **Leaderboard score**: 0.97
 
 
